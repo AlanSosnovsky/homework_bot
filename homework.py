@@ -77,7 +77,10 @@ def parse_status(homework):
 
     verdict = HOMEWORK_STATUSES[homework_status]
 
-    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    return (
+        f"Изменился статус проверки работы {homework_name}. {verdict}",
+        homework_name,
+    )
 
 
 def check_tokens():
@@ -114,20 +117,20 @@ def main():
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
-            if homeworks:
-                for homework in homeworks:
-                    status = parse_status(homework)
-                    homework_name = homework["homework_name"]
-                    last_status = last_statuses.get(homework["id"])
-                    if status != last_status:
-                        send_message(bot, status)
-                    else:
-                        logging.debug(
-                            f"Статус работы {homework_name} не изменился"
-                        )
-                    last_statuses[homework["id"]] = status
-            else:
+            if not homeworks:
                 logging.debug("Нет заданий для проверки.")
+                time.sleep(RETRY_TIME)
+                continue
+            for homework in homeworks:
+                status, homework_name = parse_status(homework)
+                last_status = last_statuses.get(homework_name)
+                if status != last_status:
+                    send_message(bot, status)
+                else:
+                    logging.debug(
+                        f"Статус работы {homework_name} не изменился"
+                    )
+                last_statuses[homework_name] = status
 
             current_timestamp = response["current_date"]
             time.sleep(RETRY_TIME)
@@ -139,8 +142,6 @@ def main():
                 send_message(bot, message)
                 last_error = message
             time.sleep(RETRY_TIME)
-        else:
-            ...
 
 
 if __name__ == "__main__":
