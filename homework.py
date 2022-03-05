@@ -33,7 +33,7 @@ def send_message(bot, message):
     if tele_message:
         logging.info(f"Бот отправил сообщение: '{tele_message.text}'")
     else:
-        logging.error(f"Бот не смог отправить сообщение.")
+        logging.error(f"Бот не смог отправить сообщение: '{message}'")
 
 
 def get_api_answer(current_timestamp):
@@ -53,8 +53,8 @@ def get_api_answer(current_timestamp):
 
 def check_response(response):
     """Проверяем, что ответ от API соответствует ожидаемому."""
-    if response and type(response) != type(dict()):
-        if type(response[0]) == type(dict()):
+    if response and not isinstance(response, dict):
+        if isinstance(response[0], dict):
             response = response[0]
     if (
         response
@@ -62,7 +62,7 @@ def check_response(response):
             "homeworks" in response.keys()
             and "current_date" in response.keys()
         )
-        and type(response["homeworks"]) == type(list())
+        and isinstance(response["homeworks"], list)
     ):
         return response["homeworks"]
     else:
@@ -71,6 +71,7 @@ def check_response(response):
 
 
 def parse_status(homework):
+    """Превращаем код статуса в готовое сообщение."""
     homework_name = homework["homework_name"]
     homework_status = homework["status"]
 
@@ -80,7 +81,7 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """Проверяем, что все необходимые токены существуют"""
+    """Проверяем, что все необходимые токены существуют."""
     return (
         bool(PRACTICUM_TOKEN)
         and bool(TELEGRAM_TOKEN)
@@ -90,7 +91,6 @@ def check_tokens():
 
 def main():
     """Основная логика работы бота."""
-
     logging.basicConfig(
         stream=stdout,
         level=logging.DEBUG,
@@ -98,7 +98,10 @@ def main():
     )
 
     if not check_tokens():
-        message = "Отсутствуют необходимые переменные окружения! Программа принудительно остановлена."
+        message = (
+            "Отсутствуют необходимые переменные окружения!"
+            "Программа принудительно остановлена."
+        )
         logging.critical(message)
         raise RuntimeError(message)
 
@@ -114,12 +117,13 @@ def main():
             if homeworks:
                 for homework in homeworks:
                     status = parse_status(homework)
+                    homework_name = homework["homework_name"]
                     last_status = last_statuses.get(homework["id"])
                     if status != last_status:
                         send_message(bot, status)
                     else:
                         logging.debug(
-                            f"Статус работы {homework['homework_name']} не изменился"
+                            f"Статус работы {homework_name} не изменился"
                         )
                     last_statuses[homework["id"]] = status
             else:
