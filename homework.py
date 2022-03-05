@@ -72,15 +72,16 @@ def check_response(response):
 
 def parse_status(homework):
     """Превращаем код статуса в готовое сообщение."""
-    homework_name = homework["homework_name"]
-    homework_status = homework["status"]
+    try:
+        homework_name = homework["homework_name"]
+        homework_status = homework["status"]
+    except KeyError:
+        message = "Ответ от API не соответствует ожидаемому."
+        raise RuntimeError(message)
 
     verdict = HOMEWORK_STATUSES[homework_status]
 
-    return (
-        f"Изменился статус проверки работы {homework_name}. {verdict}",
-        homework_name,
-    )
+    return f"Изменился статус проверки работы {homework_name}. {verdict}"
 
 
 def check_tokens():
@@ -119,21 +120,22 @@ def main():
             homeworks = check_response(response)
             if not homeworks:
                 logging.debug("Нет заданий для проверки.")
-                time.sleep(RETRY_TIME)
                 continue
             for homework in homeworks:
-                status, homework_name = parse_status(homework)
+                status = parse_status(homework)
+                homework_name = homework.get("homework_name")
+                if homework is None:
+                    raise RuntimeError("Неожиданный формат домашки.")
                 last_status = last_statuses.get(homework_name)
                 if status != last_status:
                     send_message(bot, status)
                 else:
                     logging.debug(
-                        f"Статус работы {homework_name} не изменился"
+                        f"Статус работы {homework_name} не изменился."
                     )
                 last_statuses[homework_name] = status
 
             current_timestamp = response["current_date"]
-            time.sleep(RETRY_TIME)
 
         except Exception as error:
             message = f"Сбой в работе программы: {error}"
@@ -141,6 +143,7 @@ def main():
             if message != last_error:
                 send_message(bot, message)
                 last_error = message
+        finally:
             time.sleep(RETRY_TIME)
 
 
