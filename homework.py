@@ -72,16 +72,12 @@ def check_response(response):
 
 def parse_status(homework):
     """Превращаем код статуса в готовое сообщение."""
-    try:
-        homework_name = homework["homework_name"]
-        homework_status = homework["status"]
-    except KeyError:
-        message = "Ответ от API не соответствует ожидаемому."
-        raise RuntimeError(message)
+    homework_name = homework.get("homework_name")
+    homework_status = homework.get("status")
 
     verdict = HOMEWORK_STATUSES[homework_status]
 
-    return f"Изменился статус проверки работы {homework_name}. {verdict}"
+    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
